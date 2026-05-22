@@ -1,6 +1,6 @@
 {
   "name": "botify-x-pairing-portal",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "BOTIFY X WhatsApp Pairing Portal",
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "qrcode": "^1.5.4",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "pg": "^8.11.3"
   }
 }
