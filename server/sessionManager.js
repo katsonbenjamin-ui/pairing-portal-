@@ -9,6 +9,7 @@ import path from "node:path";
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { getBrowserForServer } from "./fingerprints.js";
 import { generateBotifySessionId, generateSocketSessionId } from "./sessionId.js";
+import { savePairedSession } from "./db.js";
 
 const AUTH_BASE = path.resolve(process.cwd(), "auth_sessions");
 const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
@@ -184,12 +185,28 @@ async function startBaileysSocket(session) {
 
       console.log(`[Session] Connected: ${session.id}, ID: ${botifyId}`);
 
+      // ── Persist credentials to Postgres ──────────────────────────────────
+      // This is the key step: saves auth state to shared DB so Core can
+      // restore the session after Railway restarts without re-pairing.
+      try {
+        await savePairedSession(botifyId, session.authDir);
+        console.log(`[Session] Credentials saved to DB for ${botifyId}`);
+      } catch (err) {
+        console.error(`[Session] Failed to save credentials to DB for ${botifyId}:`, err.message);
+        // Non-fatal: user still sees session ID and can use the bot
+      }
+
+      // Send session ID to user's WhatsApp
       try {
         const jid = sock.user?.id;
         if (jid) {
-          await sock.sendMessage(jid, { text: "Connection successful" });
-          await new Promise((r) => setTimeout(r, 1500));
+          await sock.sendMessage(jid, { text: "✅ *BOTIFY X — Connection Successful!*\n\nYour session ID is:" });
+          await new Promise((r) => setTimeout(r, 1000));
           await sock.sendMessage(jid, { text: botifyId });
+          await new Promise((r) => setTimeout(r, 500));
+          await sock.sendMessage(jid, {
+            text: "📋 Copy that ID and paste it in the *Client Panel* → Attach Session ID.\nThen click *Start* to activate your bot.",
+          });
           console.log(`[Session] Session ID sent to user for ${session.id}`);
         }
       } catch (err) {
